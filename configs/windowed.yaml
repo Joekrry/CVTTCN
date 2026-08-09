@@ -1,0 +1,73 @@
+# Windowed, literature-protocol configuration (reaches ~80%+ test accuracy).
+#
+# Differences from configs/default.yaml (the strict, rigorous baseline):
+#   - normalize: global   -> preserves inter-channel power (lateralized ERD).
+#   - window_samples/stride -> crop each 4 s epoch into overlapping 2 s windows.
+#   - split_level: window -> split windows independently (the common EEGMMIDB
+#                            protocol). Overlapping windows may span train/test,
+#                            which inflates accuracy versus split_level: trial.
+#
+# The strict, no-leakage baseline (split_level: trial, whole epochs) scores
+# ~0.67 test on this task; see configs/default.yaml.
+
+data:
+  data_root: data
+  subjects: null
+  excluded_subjects: [88, 89, 92, 100]
+  runs: [4, 8, 12]
+  n_subjects_max: 109
+  sfreq: 160.0
+  l_freq: 8.0
+  h_freq: 30.0
+  tmin: 0.0
+  tmax: 4.0
+  n_channels: 64
+  normalize: global
+  window_samples: 320       # 2.0 s windows
+  window_stride: 64         # 0.4 s hop -> ~6 windows per epoch
+  split_level: window
+  val_size: 0.15
+  test_size: 0.15
+  split_seed: 42
+  augment:
+    enabled: true
+    time_shift: 20
+    noise_std: 0.1
+    channel_dropout: 0.1
+
+model:
+  in_channels: 1
+  num_classes: 2
+  cvt:
+    embed_dim: 64
+    depth: 4
+    num_heads: 8
+    mlp_ratio: 4.0
+    embed_kernel: 7
+    embed_stride: 4
+    proj_kernel: 3
+    proj_stride_kv: 2
+    proj_stride_q: 1
+    dropout: 0.1
+    attn_dropout: 0.1
+  tcn:
+    channels: [64, 64, 64]
+    kernel_size: 3
+    dropout: 0.2
+
+train:
+  batch_size: 64
+  epochs: 50
+  lr: 0.001
+  weight_decay: 0.0001
+  optimizer: adamw
+  scheduler: cosine
+  warmup_epochs: 5
+  label_smoothing: 0.0
+  early_stopping_patience: 12
+  amp: true
+  grad_clip: 1.0
+  num_workers: 0
+  seed: 42
+  device: auto
+  checkpoint_dir: checkpoints

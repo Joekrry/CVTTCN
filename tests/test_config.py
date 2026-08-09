@@ -67,6 +67,8 @@ def test_unknown_top_level_key_raises():
         ({"data": {"tmin": 4.0, "tmax": 0.0}}, "tmax"),
         ({"model": {"num_classes": 1}}, "num_classes"),
         ({"train": {"device": "tpu"}}, "device"),
+        ({"data": {"window_samples": 100, "window_stride": 0}}, "window_stride"),
+        ({"data": {"window_samples": 999999, "window_stride": 10}}, "window_samples"),
     ],
 )
 def test_validate_rejects_bad_config(overrides, message):

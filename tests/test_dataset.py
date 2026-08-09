@@ -10,7 +10,9 @@ from cvttcn.data.dataset import (
     EEGDataset,
     build_dataloaders,
     make_datasets,
+    make_split,
     split_by_trial,
+    split_random,
 )
 from cvttcn.data.preprocessing import EpochedData
 
@@ -84,6 +86,25 @@ def test_split_changes_with_seed():
     a = split_by_trial(data, Config.from_dict({"data": {"split_seed": 1}}).data)
     b = split_by_trial(data, Config.from_dict({"data": {"split_seed": 2}}).data)
     assert not np.array_equal(a.test, b.test)
+
+
+# --- split_random / make_split ---------------------------------------------
+def test_split_random_covers_all_without_overlap():
+    data = _synthetic()
+    s = split_random(data, Config().data)
+    all_idx = np.concatenate([s.train, s.val, s.test])
+    assert np.array_equal(np.sort(all_idx), np.arange(len(data)))
+    assert not (set(s.train) & set(s.test))
+    assert not (set(s.train) & set(s.val))
+
+
+def test_make_split_dispatches_on_level():
+    data = _synthetic()
+    trial = make_split(data, Config.from_dict({"data": {"split_level": "trial"}}).data)
+    window = make_split(data, Config.from_dict({"data": {"split_level": "window"}}).data)
+    # trial-level keeps trials intact; window-level does not.
+    assert not (set(data.trials[trial.train]) & set(data.trials[trial.test]))
+    assert len(window.train) + len(window.val) + len(window.test) == len(data)
 
 
 # --- EEGDataset ------------------------------------------------------------

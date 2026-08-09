@@ -15,6 +15,9 @@ data:
   tmax: 4.0
   n_channels: 64
   normalize: zscore
+  window_samples: null      # null => whole epochs; else crop into windows
+  window_stride: 0
+  split_level: trial        # "trial" (no leakage) or "window" (literature protocol)
   val_size: 0.15
   test_size: 0.15
   split_seed: 42

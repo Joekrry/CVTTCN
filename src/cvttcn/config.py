@@ -50,7 +50,16 @@ class DataConfig:
     n_channels: int = 64          # EEG channels in EEGMMIDB
     normalize: str = "zscore"     # per-epoch, per-channel; "zscore" or "none"
 
-    # Pooled cross-subject split, applied per *trial* to avoid window leakage.
+    # Cropped-window augmentation: slice each epoch into overlapping windows of
+    # ``window_samples`` with hop ``window_stride``. ``None`` keeps whole epochs.
+    # All windows of one epoch share its trial id, so the split keeps them together.
+    window_samples: Union[int, None] = None
+    window_stride: int = 0
+
+    # Split granularity. "trial": whole trials go to one split (rigorous, no
+    # window leakage). "window": every window is split independently (the common
+    # literature protocol; overlapping windows may span splits, inflating scores).
+    split_level: str = "trial"
     val_size: float = 0.15
     test_size: float = 0.15
     split_seed: int = 42
@@ -151,12 +160,20 @@ class Config:
             raise ValueError("val_size and test_size must each be in (0, 1).")
         if d.val_size + d.test_size >= 1.0:
             raise ValueError("val_size + test_size must leave room for training data.")
-        if d.normalize not in {"zscore", "none"}:
+        if d.normalize not in {"zscore", "global", "none"}:
             raise ValueError(f"Unknown normalize mode: {d.normalize!r}")
+        if d.split_level not in {"trial", "window"}:
+            raise ValueError(f"Unknown split_level: {d.split_level!r}")
         if d.h_freq <= d.l_freq:
             raise ValueError("h_freq must be greater than l_freq.")
         if d.tmax <= d.tmin:
             raise ValueError("tmax must be greater than tmin.")
+        if d.window_samples is not None:
+            full = int(round((d.tmax - d.tmin) * d.sfreq))
+            if not (0 < d.window_samples <= full):
+                raise ValueError("window_samples must be in (0, epoch length].")
+            if d.window_stride <= 0:
+                raise ValueError("window_stride must be positive when windowing.")
         if not (0.0 <= d.augment.channel_dropout < 1.0):
             raise ValueError("augment.channel_dropout must be in [0, 1).")
         if d.augment.noise_std < 0.0:

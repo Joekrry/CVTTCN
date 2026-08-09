@@ -20,6 +20,7 @@ from cvttcn.data.preprocessing import (
     epochs_to_arrays,
     expected_n_times,
     preprocess_subjects,
+    window_epochs,
     zscore_epochs,
 )
 
@@ -126,6 +127,16 @@ def test_no_normalization_when_disabled():
 
 
 # --- aggregation across subjects (mocked, offline) -------------------------
+def test_window_epochs_shapes_and_source_grouping():
+    X = np.random.default_rng(0).standard_normal((3, 1, 8, 640)).astype(np.float32)
+    y = np.array([0, 1, 0], dtype=np.int64)
+    Xw, yw, source = window_epochs(X, y, window=400, stride=120)
+    # starts 0, 120, 240 -> 3 windows per epoch
+    assert Xw.shape == (9, 1, 8, 400)
+    assert list(yw) == [0, 0, 0, 1, 1, 1, 0, 0, 0]
+    assert list(source) == [0, 0, 0, 1, 1, 1, 2, 2, 2]  # groups by source epoch
+
+
 def test_preprocess_subjects_concatenates_with_global_trial_ids(monkeypatch):
     cfg = Config().data
     n_times = expected_n_times(cfg)

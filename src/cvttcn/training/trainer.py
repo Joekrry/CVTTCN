@@ -74,6 +74,19 @@ class Trainer:
         self.model.eval()
         return self._run_epoch(loader, train=False)
 
+    @torch.no_grad()
+    def predict(self, loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return ``(y_true, y_pred)`` over ``loader`` for detailed evaluation."""
+        self.model.eval()
+        preds, targets = [], []
+        for xb, yb in loader:
+            xb = xb.to(self.device, non_blocking=True)
+            with autocast(self.device.type, enabled=self.use_amp):
+                logits = self.model(xb)
+            preds.append(logits.argmax(dim=1).cpu())
+            targets.append(yb.cpu())
+        return torch.cat(targets), torch.cat(preds)
+
     def _run_epoch(self, loader: DataLoader, train: bool) -> EpochResult:
         total_loss, n_seen = 0.0, 0
         preds, targets = [], []

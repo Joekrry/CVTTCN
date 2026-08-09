@@ -115,6 +115,32 @@ def split_by_trial(data: EpochedData, cfg: DataConfig) -> DataSplit:
     )
 
 
+def split_random(data: EpochedData, cfg: DataConfig) -> DataSplit:
+    """Stratified split at the sample level, ignoring trial grouping.
+
+    This is the common literature protocol: overlapping windows are shuffled
+    independently into train/val/test, which tends to inflate scores relative to
+    :func:`split_by_trial` because near-duplicate windows can span splits.
+    """
+    idx = np.arange(len(data.y))
+    tv, test = train_test_split(
+        idx, test_size=cfg.test_size, random_state=cfg.split_seed, stratify=data.y
+    )
+    tv = np.asarray(tv)
+    rel_val = cfg.val_size / (1.0 - cfg.test_size)
+    train, val = train_test_split(
+        tv, test_size=rel_val, random_state=cfg.split_seed, stratify=data.y[tv]
+    )
+    return DataSplit(train=np.asarray(train), val=np.asarray(val), test=np.asarray(test))
+
+
+def make_split(data: EpochedData, cfg: DataConfig) -> DataSplit:
+    """Dispatch to the trial-level or window-level split per ``cfg.split_level``."""
+    if cfg.split_level == "window":
+        return split_random(data, cfg)
+    return split_by_trial(data, cfg)
+
+
 @dataclass
 class DataLoaders:
     """The three loaders plus the underlying split (for inspection / logging)."""
@@ -136,7 +162,7 @@ def make_datasets(data: EpochedData, split: DataSplit, cfg: Config):
 
 def build_dataloaders(data: EpochedData, cfg: Config) -> DataLoaders:
     """Split the pooled epochs and wrap each split in a DataLoader."""
-    split = split_by_trial(data, cfg.data)
+    split = make_split(data, cfg.data)
     train_ds, val_ds, test_ds = make_datasets(data, split, cfg)
 
     generator = torch.Generator().manual_seed(cfg.train.seed)
