@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "cvttcn"
 version = "0.1.0"
 description = "Hybrid Convolutional Vision Transformer + Temporal Convolutional Network for EEG motor-imagery classification on the EEGMMIDB dataset."
+readme = "README.md"
 requires-python = ">=3.11"
 # NOTE: torch is installed separately via requirements.txt because it needs the
 # CUDA wheel index; it is deliberately omitted here so a plain `pip install .`
 # does not pull the CPU-only build from PyPI.
-# (A `readme` field is intentionally omitted; the README is added at project end.)
 dependencies = [
     "numpy",
     "scipy",
